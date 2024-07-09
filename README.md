@@ -48,19 +48,33 @@ Restart Odoo service: sudo service odoo-server restart
 Method-2 (Setup Odoo on Ubuntu using commands):
 =============================================================================
 sudo apt update
+
 sudo apt upgrade -y
+
 sudo apt install build-essential wget git python3.11-dev python3.11-venv libfreetype-dev libxml2-dev libzip-dev libsasl2-dev node-less libjpeg-dev zlib1g-dev libpq-dev libxslt1-dev libldap2-dev libtiff5-dev libopenjp2-7-dev libcap-dev -y
+
 sudo /usr/sbin/adduser --system --shell /bin/bash --gecos "Odoo user" --group --home /opt/odoo17 odoo17
+
 sudo apt install postgresql -y
+
 sudo su - postgres -c "createuser -s odoo17"
+
 sudo apt install wkhtmltopdf -y
+
 sudo su - odoo17
+
 git clone https://www.github.com/odoo/odoo --depth 1 --branch 17.0 odoo17
+
 python3.11 -m venv odoo17-venv
+
 source odoo17-venv/bin/activate
+
 pip3 install wheel setuptools pip --upgrade
+
 pip3 install -r odoo17/requirements.txt
+
 mkdir /opt/odoo17/odoo17/custom-addons
+
 exit
 
 sudo nano /etc/odoo17.conf
@@ -93,18 +107,25 @@ WantedBy=multi-user.target
 
 
 sudo systemctl daemon-reload
+
 sudo systemctl start odoo17
+
 sudo systemctl status odoo17
+
 sudo journalctl -u odoo17
 
 sudo systemctl enable odoo17
+
 sudo systemctl enable --now odoo17
 
 sudo systemctl status odoo17
 
 sudo systemctl status postgresql
+
 sudo systemctl start postgresql
+
 sudo journalctl -u postgresql
+
 sudo systemctl restart odoo17
 
 
@@ -165,6 +186,7 @@ location ~* /web/static/ {
 sudo systemctl restart nginx
 
 sudo apt install certbot python3-certbot-nginx -y
+
 sudo certbot --nginx -d domain.com
 
 
