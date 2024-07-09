@@ -31,6 +31,10 @@ Source: github.com/Yenthe666/InstallScript/tree/17.0
 
 Method-2 (Setup Odoo on Ubuntu using commands):
 =============================================================================
+`Source:`
+	https://zacs-tech.com/how-to-install-odoo-17-on-ubuntu-22-04/
+	https://www.youtube.com/watch?v=jDPog61i0Hw&ab_channel=ZacsTech
+
 sudo apt update
 
 sudo apt upgrade -y
