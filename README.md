@@ -79,30 +79,30 @@ exit
 
 sudo nano /etc/odoo17.conf
 ===================================
-[options]
-admin_passwd = m0d1fyth15
-db_host = False
-db_port = False
-db_user = odoo17
-db_password = False
-addons_path = /opt/odoo17/odoo17/addons,/opt/odoo17/odoo17/custom-addons
+	[options]
+	admin_passwd = m0d1fyth15
+	db_host = False
+	db_port = False
+	db_user = odoo17
+	db_password = False
+	addons_path = /opt/odoo17/odoo17/addons,/opt/odoo17/odoo17/custom-addons
 
 sudo nano /etc/systemd/system/odoo17.service
 ==============================================
-[Unit]
-Description=odoo17
-Requires=postgresql.service
-After=network.target postgresql.service
-[Service]
-Type=simple
-SyslogIdentifier=odoo17
-PermissionsStartOnly=true
-User=odoo17
-Group=odoo17
-ExecStart=/opt/odoo17/odoo17-venv/bin/python3 /opt/odoo17/odoo17/odoo-bin -c /etc/odoo17.conf
-StandardOutput=journal+console
-[Install]
-WantedBy=multi-user.target
+	[Unit]
+	Description=odoo17
+	Requires=postgresql.service
+	After=network.target postgresql.service
+	[Service]
+	Type=simple
+	SyslogIdentifier=odoo17
+	PermissionsStartOnly=true
+	User=odoo17
+	Group=odoo17
+	ExecStart=/opt/odoo17/odoo17-venv/bin/python3 /opt/odoo17/odoo17/odoo-bin -c /etc/odoo17.conf
+	StandardOutput=journal+console
+	[Install]
+	WantedBy=multi-user.target
 
 
 
@@ -134,53 +134,53 @@ sudo apt install nginx -y
 
 sudo nano /etc/nginx/conf.d/odoo.conf
 ======================================
-upstream odoo17 {
- server 127.0.0.1:8069;
-}
-
-upstream odoochat {
- server 127.0.0.1:8072;
-}
-
-server {
-    listen 80;
-    server_name domain.com;  
-
-    
-    # log files
-    access_log /var/log/nginx/odoo17.access.log;
-    error_log /var/log/nginx/odoo17.error.log;
+	upstream odoo17 {
+	 server 127.0.0.1:8069;
+	}
 	
-    proxy_buffers 16 64k;
-    proxy_buffer_size 128k;
-
-location / {
-    proxy_pass http://odoo17;
-    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
-    proxy_redirect off;
-
-    # Proxy headers
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-# Handle longpoll requests
-location /longpolling {
-        proxy_pass http://odoochat;
-    }
-
-
-# Cache static files
-location ~* /web/static/ {
-        proxy_cache_valid 200 60m;
-        proxy_buffering on;
-        expires 864000;
-        proxy_pass http://odoo17;
-    }
-
-}
+	upstream odoochat {
+	 server 127.0.0.1:8072;
+	}
+	
+	server {
+	    listen 80;
+	    server_name domain.com;  
+	
+	    
+	    # log files
+	    access_log /var/log/nginx/odoo17.access.log;
+	    error_log /var/log/nginx/odoo17.error.log;
+		
+	    proxy_buffers 16 64k;
+	    proxy_buffer_size 128k;
+	
+	location / {
+	    proxy_pass http://odoo17;
+	    proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+	    proxy_redirect off;
+	
+	    # Proxy headers
+	    proxy_set_header Host $host;
+	    proxy_set_header X-Real-IP $remote_addr;
+	    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	    proxy_set_header X-Forwarded-Proto $scheme;
+	}
+	
+	# Handle longpoll requests
+	location /longpolling {
+	        proxy_pass http://odoochat;
+	    }
+	
+	
+	# Cache static files
+	location ~* /web/static/ {
+	        proxy_cache_valid 200 60m;
+	        proxy_buffering on;
+	        expires 864000;
+	        proxy_pass http://odoo17;
+	    }
+	
+	}
 
 
 sudo systemctl restart nginx
