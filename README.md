@@ -198,26 +198,20 @@ Method-3(Automatic aws odoo deployment with django code):
 	import time
 	import uuid
 	import paramiko
-	from paramiko import SSHClient, AutoAddPolicy
-	from django.conf import settings
-	import subprocess
-	import paramiko
-	from scp import SCPClient
-	import io
-	import tempfile
-	import stat
 	from django.shortcuts import get_object_or_404, redirect
 	from psycopg2 import sql  # Import the sql module from psycopg2
 	from io import StringIO
-	from account.models import User
-	from django.db import transaction
+	
+	
 	
 	
 	@login_required
 	def addMyDomain(request, pk):
 	    if request.user.is_authenticated:
 	        company_info = CompanyRegistrationInformation.objects.get(id=pk)
-	        context={'company_info':company_info, "user_info":request.user}
+	
+	        Added_Domains = OdooDomainSetup.objects.filter(user=request.user)
+	        context={'company_info':company_info, "user_info":request.user, 'Added_Domains':Added_Domains}
 	        return render(request, "Automatic_Deployment/addMyDomain.html", context)
 	    else:
 	        return redirect('login_info')
@@ -286,6 +280,7 @@ Method-3(Automatic aws odoo deployment with django code):
 	        return redirect('confirm_ip', company_info_id, setup_id)
 	
 	
+	
 	@login_required
 	def confirm_ip_view(request, company_info_id, setup_id):
 	    setup = OdooDomainSetup.objects.get(id=setup_id)
@@ -299,8 +294,6 @@ Method-3(Automatic aws odoo deployment with django code):
 	    company_info = CompanyRegistrationInformation.objects.get(id=company_info_id)
 	    print('Waiting for confirming ip and point to domain ...')
 	    return render(request, 'Automatic_Deployment/confirm_ip.html', {'setup': setup, 'company_info': company_info, "user_info": request.user})
-	
-	
 	
 	
 	def verify_instance_key_pair(instance_name, expected_key_pair_name):
@@ -438,27 +431,37 @@ Method-3(Automatic aws odoo deployment with django code):
 	    except Exception as e:
 	        print(f"Failed to retrieve instance public IP: {e}")
 	
-	    # print('Creating DB ...')
-	    # # Create a PostgreSQL database for the Odoo instance
-	    # unique_suffix = str(uuid.uuid4()).split('-')[0]
-	    # db_name = f"{setup.domain.replace('.', '_')}-{unique_suffix}-db"
-	    # db_user = f"{setup.domain.replace('.', '_')}-{unique_suffix}"
-	    # db_password = f"{setup.domain.replace('.', '_')}-{unique_suffix}"
-	    # setup.db_name = db_name
-	    # setup.db_user = db_user
-	    # setup.db_password = db_password
-	    # setup.save()
-	
-	
-	
-	    # if create_postgresql_db(db_name, db_user, db_password):
-	    #     setup.db_name = db_name
-	    #     setup.db_user = db_user
-	    #     setup.db_password = db_password
-	    #     setup.save()
-	    #     print(f"Database {db_name} created and user {db_user} added.")
-	    # else:
-	    #     print(f"Failed to create database {db_name} and user {db_user}.")
+	    # Add firewall rules for ports 22, 80-81, 443, and 8069
+	    try:
+	        print("Trying to add firewall rules for ports 22, 80-81, 443, and 8069 ...")
+	        client.put_instance_public_ports(
+	            portInfos=[
+	                {
+	                    'fromPort': 22,
+	                    'toPort': 22,
+	                    'protocol': 'TCP'
+	                },
+	                {
+	                    'fromPort': 80,
+	                    'toPort': 81,
+	                    'protocol': 'TCP'
+	                },
+	                {
+	                    'fromPort': 443,
+	                    'toPort': 443,
+	                    'protocol': 'TCP'
+	                },
+	                {
+	                    'fromPort': 8069,
+	                    'toPort': 8069,
+	                    'protocol': 'TCP'
+	                },
+	            ],
+	            instanceName=instance_name
+	        )
+	        print("Successfully added firewall rules for ports 22, 80-81, 443, and 8069.")
+	    except Exception as e:
+	        print(f"Failed to add firewall rules: {e}")
 	
 	    company_info = CompanyRegistrationInformation.objects.get(id=company_info_id)
 	    return render(request, 'Automatic_Deployment/instance_created.html', {'setup': setup, "company_info": company_info, "user_info": request.user})
@@ -469,11 +472,12 @@ Method-3(Automatic aws odoo deployment with django code):
 	def setup_odoo_docker_view(request, setup_id, company_info_id):
 	    try:
 	        setup = OdooDomainSetup.objects.get(id=setup_id)
+	
 	        unique_suffix = str(uuid.uuid4()).split('-')[0]
-	        db_name = f"{setup.domain.replace('.', '_')}_{unique_suffix}_db"
+	        # db_name = f"{setup.domain.replace('.', '_')}_{unique_suffix}_db"
 	        db_user = f"{setup.domain.replace('.', '_')}_{unique_suffix}"
 	        db_password = f"{setup.domain.replace('.', '_')}_{unique_suffix}"
-	        setup.db_name = db_name
+	        # setup.db_name = db_name
 	        setup.db_user = db_user
 	        setup.db_password = db_password
 	        setup.save()
@@ -483,7 +487,7 @@ Method-3(Automatic aws odoo deployment with django code):
 	        # Debug statements to check setup values
 	        print(f"Instance Public IP: {instance_public_ip}")
 	        print(f"DB User: {setup.db_user}")
-	        print(f"DB Password: {setup.db_password}")
+	        # print(f"DB Password: {setup.db_password}")
 	
 	        # Create PostgreSQL user
 	        if not create_postgresql_user(setup.db_user, setup.db_password):
@@ -517,30 +521,122 @@ Method-3(Automatic aws odoo deployment with django code):
 	            - "8072:8072"  # Expose Odoo longpolling port
 	        networks:
 	            - odoo-network
-	    db:
-	        image: postgres:latest
-	        environment:
-	            POSTGRES_DB: {db_name}
-	            POSTGRES_USER: {db_user}
-	            POSTGRES_PASSWORD: {db_password}
-	        volumes:
-	            - db_data:/var/lib/postgresql/data
-	        networks:
-	            - odoo-network
 	networks:
 	  odoo-network:
 	volumes:
 	  odoo_data:
-	  db_data:
 	"""
+	
+	
+	
+	#         docker_compose_content = f"""
+	# version: '3.9'
+	# services:
+	#     odoo:
+	#         image: odoo:17.0
+	#         restart: always
+	#         tty: true
+	#         command: -c /etc/odoo/odoo.conf
+	#         volumes:
+	#             - ./custom_addons:/mnt/extra-addons
+	#             - ./config:/etc/odoo
+	#             - /home/ubuntu/odoo:/mnt/odoo
+	#             - odoo_data:/var/lib/odoo
+	#         ports:
+	#             - "8069:8069"
+	#             - "8072:8072"  # Expose Odoo longpolling port
+	#         networks:
+	#             - odoo-network
+	#     db:
+	#         image: postgres:latest
+	#         environment:
+	#             POSTGRES_DB: {db_name}
+	#             POSTGRES_USER: {db_user}
+	#             POSTGRES_PASSWORD: {db_password}
+	#         volumes:
+	#             - db_data:/var/lib/postgresql/data
+	#         networks:
+	#             - odoo-network
+	# networks:
+	#   odoo-network:
+	# volumes:
+	#   odoo_data:
+	#   db_data:
+	# """
+	
+	
+	        # Docker Compose and Nginx configuration content
+	#         docker_compose_content = f"""
+	# version: '3.9'
+	# services:
+	#     odoo:
+	#         image: odoo:17.0
+	#         restart: always
+	#         tty: true
+	#         volumes:
+	#              - ./custom_addons:/mnt/extra-addons
+	#              - ./config:/etc/odoo
+	#              - odoo_data:/var/lib/odoo
+	#         ports:
+	#              - "8069:8069"
+	#              - "8072:8072"
+	# volumes:
+	#     odoo_data:
+	# """
+	
+	
+	
 	
 	        odoo_conf_content = f"""
 	[options]
+	admin_passwd = kintah
 	db_host = {os.getenv('MS_DB_HOST')}
 	db_user = {setup.db_user}
 	db_password = {setup.db_password}
 	addons_path = /mnt/extra-addons,/mnt/odoo/addons
+	
+	data_dir = /var/lib/odoo
+	proxy_mode = True
+	dbfilter = .*
+	http_port = 8069
+	longpolling_port = 8072
+	limit_memory_hard = 1677721600
+	limit_memory_soft = 629145600
+	limit_request = 8192
+	limit_time_cpu = 600
+	limit_time_real = 1200
+	max_cron_threads = 1
+	workers = 5
+	
+	logfile = /var/log/odoo/odoo-server.log
 	"""
+	
+	        # odoo_conf_content = f"""
+	        # [options]
+	        # ; This is the password that allows database operations:
+	        # admin_passwd = admin
+	        # addons_path = /mnt/extra-addons
+	        # data_dir = /var/lib/odoo
+	        # db_host = {os.getenv('MS_DB_HOST')}
+	        # db_port = {os.getenv('MS_DB_PORT')}
+	        # db_user = {setup.db_user}
+	        # db_password = {setup.db_password}
+	        # proxy_mode = True
+	        # ; dbfilter = .*
+	        # xmlrpc_port = 8069
+	        # longpolling_port = 8072
+	        # ; limit_memory_hard = 1677721600
+	        # ; limit_memory_soft = 629145600
+	        # limit_request = 8192
+	        # limit_time_cpu = 600
+	        # limit_time_real = 1200
+	        # max_cron_threads = 1
+	        # workers = 5
+	        # """
+	
+	
+	
+	
 	
 	        nginx_conf_content = f"""
 	upstream odoo {{
@@ -553,7 +649,7 @@ Method-3(Automatic aws odoo deployment with django code):
 	
 	server {{
 	    listen 80;
-	    server_name {setup.domain};  # Replace with actual domain
+	    server_name {setup.domain} www.{setup.domain};  # Replace with actual domain
 	
 	    proxy_read_timeout 720s;
 	    proxy_connect_timeout 720s;
@@ -593,6 +689,9 @@ Method-3(Automatic aws odoo deployment with django code):
 	    gzip on;
 	}}
 	"""
+	
+	
+	
 	
 	        # Commands to be executed on the remote server
 	        commands = [
@@ -641,7 +740,7 @@ Method-3(Automatic aws odoo deployment with django code):
 	                'sudo ln -s /etc/nginx/sites-available/odoo.conf /etc/nginx/sites-enabled/',
 	                'sudo nginx -t',
 	                'sudo systemctl restart nginx.service',
-	                f'sudo certbot --nginx -d {setup.domain} --register-unsafely-without-email --agree-tos --no-eff-email'
+	                f'sudo certbot --nginx -d {setup.domain} -d www.{setup.domain} --register-unsafely-without-email --agree-tos --no-eff-email'
 	            ]
 	            if not ssh_execute_command(instance_public_ip, 'ubuntu', setup.private_key, nginx_commands):
 	                messages.error(request, "Failed to configure Nginx.")
@@ -651,11 +750,12 @@ Method-3(Automatic aws odoo deployment with django code):
 	            check_docker_cmd = 'sudo docker ps --format "{{.Names}}"'
 	            container_names = ssh_execute_command(instance_public_ip, 'ubuntu', setup.private_key, [check_docker_cmd],
 	                                                  get_output=True)
-	            if 'odoo' in container_names and 'db' in container_names:
+	            # if 'odoo' in container_names and 'db' in container_names:
+	            if 'odoo' in container_names:
 	                print('Odoo deployment successful.')
 	                setup.deployed = True
 	                setup.save()
-	                messages.success(request, "Odoo deployment successful.")
+	                messages.success(request, f"Odoo deployment successful.")
 	            else:
 	                print('Docker containers not running as expected.')
 	                messages.error(request, "Docker containers not running as expected.")
@@ -674,7 +774,7 @@ Method-3(Automatic aws odoo deployment with django code):
 	        return redirect('addMyDomain', company_info_id)
 	
 	    company_info = CompanyRegistrationInformation.objects.get(id=company_info_id)
-	    return render(request, 'Automatic_Deployment/instance_created.html',
+	    return render(request, 'Automatic_Deployment/successpage.html',
 	                  {'setup': setup, 'company_info': company_info, 'user_info': request.user})
 	
 	
@@ -766,5 +866,7 @@ Method-3(Automatic aws odoo deployment with django code):
 	    except Exception as e:
 	        print(f"SSH connection or command execution failed: {e}")
 	        return False
+	
+	
 
-
+	
